@@ -1,0 +1,5 @@
+pandas
+scikit-learn
+google-cloud-aiplatform
+google-cloud-storage
+# Add other necessary libraries
