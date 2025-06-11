@@ -1,11 +1,21 @@
+# Dockerfile
 FROM python:3.9-slim
 
 WORKDIR /app
 
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libpq-dev \
+    gcc \
+  && rm -rf /var/lib/apt/lists/*
+
+# Copy and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY ./src /app/src
-COPY ./data /app/data
+# Copy source code into container
+COPY src/ ./src/
 
-CMD ["python", "src/train.py"]
+# Default entrypoint: training script
+ENTRYPOINT ["python", "src/train.py"]
