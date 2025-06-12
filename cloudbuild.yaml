@@ -26,3 +26,11 @@ steps:
 
 images:
   - 'us-central1-docker.pkg.dev/CapstoneProject/capstone/ml-model:$SHORT_SHA'
+
+steps:
+  - name: 'us-central1-docker.pkg.dev/capstoneproject-462618/capstone/ml-model:latest'
+    entrypoint: 'python'
+    args: ['train.py']
+
+options:
+  logging: CLOUD_LOGGING_ONLY
