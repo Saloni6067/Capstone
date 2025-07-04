@@ -1,12 +1,12 @@
 # cloudbuild.yaml
-# --------------------------------------------------
-# Top‑level substitutions (only these two)
+
+# Only these two top‑level substitutions are allowed
 substitutions:
   _GCP_PROJECT_ID: "capstoneproject-462618"
   _GCS_BUCKET_NAME: "capstone-nasa-wildfire-sal"
 
 steps:
-  # 1) Build & push the Docker image
+  # 1) Build the Docker image and tag with the commit SHA
   - name: 'gcr.io/cloud-builders/docker'
     id: 'Build_Docker_Image'
     args:
@@ -14,13 +14,15 @@ steps:
       - '-t'
       - 'us-central1-docker.pkg.dev/${_GCP_PROJECT_ID}/capstone/ml-model:$COMMIT_SHA'
       - '.'
+
+  # 2) Push the image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     id: 'Push_Docker_Image'
     args:
       - 'push'
       - 'us-central1-docker.pkg.dev/${_GCP_PROJECT_ID}/capstone/ml-model:$COMMIT_SHA'
 
-  # 2) Submit Vertex AI Custom Training Job
+  # 3) Submit a Vertex AI custom training job using that image
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Vertex_AI_Training'
     entrypoint: 'bash'
@@ -35,7 +37,7 @@ steps:
           --args="--bucket=${_GCS_BUCKET_NAME}" \
           --project=${_GCP_PROJECT_ID}
 
-  # 3) Register the new model
+  # 4) Register the trained model in Vertex AI Model Registry
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Register_Model'
     entrypoint: 'bash'
@@ -57,7 +59,7 @@ steps:
           --container-image-uri="$IMAGE_URI" \
           --project=${_GCP_PROJECT_ID}
 
-  # 4) Deploy (or update) the model on an endpoint
+  # 5) Deploy (or update) the model to a Vertex AI endpoint
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Deploy_Model'
     entrypoint: 'bash'
@@ -68,28 +70,31 @@ steps:
         MODEL_NAME="wildfire-detection-model"
         ENDPOINT_NAME="wildfire-prediction-endpoint"
 
-        # Get model resource name
+        # Get the model resource name (latest version)
         MODEL_ID=$(gcloud ai models list \
           --region=us-central1 \
           --filter="displayName:${MODEL_NAME}" \
           --format="value(name)" \
           --limit=1)
 
-        # Ensure endpoint exists
+        # Check if endpoint exists; create if not
         ENDPOINT_ID=$(gcloud ai endpoints list \
           --region=us-central1 \
           --filter="displayName:${ENDPOINT_NAME}" \
           --format="value(name)" \
           --limit=1)
         if [ -z "$ENDPOINT_ID" ]; then
+          echo "Endpoint not found; creating a new one..."
           ENDPOINT_ID=$(gcloud ai endpoints create \
             --region=us-central1 \
             --display-name="$ENDPOINT_NAME" \
             --project=${_GCP_PROJECT_ID} \
             --format="value(name)")
+        else
+          echo "Using existing endpoint: $ENDPOINT_ID"
         fi
 
-        # Deploy model
+        # Deploy the model
         gcloud ai endpoints deploy-model "$ENDPOINT_ID" \
           --region=us-central1 \
           --model="$MODEL_ID" \
@@ -100,8 +105,10 @@ steps:
           --traffic-split=0=100 \
           --project=${_GCP_PROJECT_ID}
 
+# Declare the image(s) your build produces
 images:
   - 'us-central1-docker.pkg.dev/${_GCP_PROJECT_ID}/capstone/ml-model:$COMMIT_SHA'
 
+# Only Cloud Logging for logs
 options:
   logging: CLOUD_LOGGING_ONLY
