@@ -4,6 +4,7 @@ import argparse
 import os
 import tempfile
 import tensorflow as tf
+from tensorflow import keras
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -29,33 +30,25 @@ def download_from_gcs(bucket_name: str, prefix: str, local_dir: str):
     return local_dir
 
 
-def upload_file_to_gcs(local_path: str, bucket_name: str, gcs_path: str):
+def upload_to_gcs(local_path: str, bucket_name: str, gcs_path: str, recursive=False):
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(gcs_path)
-    blob.upload_from_filename(local_path)
-    print(f"Uploaded {local_path} to gs://{bucket_name}/{gcs_path}")
-
-
-def upload_dir_to_gcs(local_dir: str, bucket_name: str, gcs_prefix: str):
-    """Recursively uploads a directory to GCS (used for SavedModel dir)"""
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    for root, _, files in os.walk(local_dir):
-        for file in files:
-            local_file = os.path.join(root, file)
-            rel_path = os.path.relpath(local_file, local_dir)
-            blob_path = os.path.join(gcs_prefix, rel_path).replace("\\", "/")
-            blob = bucket.blob(blob_path)
-            blob.upload_from_filename(local_file)
-            print(f"Uploaded {local_file} to gs://{bucket_name}/{blob_path}")
+    if recursive and os.path.isdir(local_path):
+        for root, _, files in os.walk(local_path):
+            for file in files:
+                local_file_path = os.path.join(root, file)
+                relative_path = os.path.relpath(local_file_path, local_path)
+                blob = bucket.blob(os.path.join(gcs_path, relative_path))
+                blob.upload_from_filename(local_file_path)
+    else:
+        blob = bucket.blob(gcs_path)
+        blob.upload_from_filename(local_path)
 
 
 def load_data(data_dir: str, filename: str = "NASA.csv") -> pd.DataFrame:
     path = os.path.join(data_dir, filename)
     print(f"Loading data from {path}")
-    df = pd.read_csv(path)
-    return df
+    return pd.read_csv(path)
 
 
 def train_and_evaluate(df: pd.DataFrame, model_dir: str, bucket: str = None):
@@ -108,7 +101,6 @@ def train_and_evaluate(df: pd.DataFrame, model_dir: str, bucket: str = None):
     scaler_path = os.path.join(model_dir, 'scaler.pkl')
     pd.to_pickle(scaler, scaler_path)
 
-    # Save loss plot
     plt.plot(history.history['loss'], label='train_loss')
     plt.plot(history.history['val_loss'], label='val_loss')
     plt.title('Loss Curve')
@@ -119,23 +111,22 @@ def train_and_evaluate(df: pd.DataFrame, model_dir: str, bucket: str = None):
     plt.savefig(loss_plot_path)
     plt.close()
 
-    # Upload to GCS
     if bucket:
-        print(f"Uploading artifacts to gs://{bucket}/model/")
-        upload_dir_to_gcs(saved_model_dir, bucket, 'model/tf_model')
-        upload_file_to_gcs(scaler_path, bucket, 'model/scaler.pkl')
-        upload_file_to_gcs(loss_plot_path, bucket, 'model/loss_curve.png')
+        print(f"Uploading full model directory to: gs://{bucket}/model/tf_model/")
+        upload_to_gcs(saved_model_dir, bucket, "model/tf_model", recursive=True)
+        upload_to_gcs(scaler_path, bucket, "model/scaler.pkl")
+        upload_to_gcs(loss_plot_path, bucket, "model/loss_curve.png")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Train NASA wildfire model and upload to GCS")
-    parser.add_argument("--bucket", default="capstone-nasa-wildfire-sal", help="GCS bucket for data and model")
-    parser.add_argument("--prefix", default="data/", help="GCS prefix for input CSV data")
-    parser.add_argument("--model-dir", default="temp/model", help="Local directory to store model files")
+    parser = argparse.ArgumentParser(description="Train NASA wildfire model and save to GCS")
+    parser.add_argument("--bucket", default="capstone-nasa-wildfire-sal", help="GCS bucket name")
+    parser.add_argument("--prefix", default="data/", help="GCS data prefix")
+    parser.add_argument("--model-dir", default="temp/model", help="Local model output directory")
     args = parser.parse_args()
 
     with tempfile.TemporaryDirectory() as tmp:
-        print(f"Downloading from gs://{args.bucket}/{args.prefix} to {tmp}")
+        print(f"Downloading dataset from gs://{args.bucket}/{args.prefix}")
         download_from_gcs(args.bucket, args.prefix, tmp)
         df = load_data(tmp)
 
