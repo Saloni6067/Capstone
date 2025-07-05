@@ -9,7 +9,7 @@ steps:
     args:
       - build
       - -f
-      - docker.train        # point to your training Dockerfile
+      - Dockerfile.train        # point to your training Dockerfile
       - -t
       - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
       - .
