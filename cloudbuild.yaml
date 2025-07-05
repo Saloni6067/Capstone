@@ -30,9 +30,7 @@ steps:
       - |
         echo "=== Starting Vertex AI training (synchronous) ==="
         gcloud ai custom-jobs create \
-          --region=us-central1 \
-          --sync \
-          --display-name=wildfire-train-${SHORT_SHA} \
+          --region=us-central1 \          --display-name=wildfire-train-${SHORT_SHA} \
           --worker-pool-spec=machine-type=n1-standard-4,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA} \
           --args="--bucket=${_GCS_BUCKET_NAME}" \
           --project=${_PROJECT_ID}
