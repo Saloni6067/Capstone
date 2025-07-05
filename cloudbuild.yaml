@@ -1,13 +1,15 @@
-substitutions:
+ubstitutions:
   _PROJECT_ID: "capstoneproject-462618"
   _GCS_BUCKET_NAME: "capstone-nasa-wildfire-sal"
 
 steps:
-  # 1) Build & tag the Docker image
+  # 1) Build & tag the training Docker image (explicit Dockerfile.train)
   - name: 'gcr.io/cloud-builders/docker'
     id: Build_Docker_Image
     args:
       - build
+      - -f
+      - docker.train        # point to your training Dockerfile
       - -t
       - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
       - .
@@ -19,7 +21,7 @@ steps:
       - push
       - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
 
-  # 3) Submit a Vertex AI Custom Training Job *and wait* (sync)
+  # 3) Submit Vertex AI custom training job and wait (sync)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: Vertex_AI_Training
     entrypoint: bash
