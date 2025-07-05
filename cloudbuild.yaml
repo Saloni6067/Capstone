@@ -44,15 +44,14 @@ steps:
       - |
         echo "=== Registering model in Vertex AI ==="
         MODEL_NAME="wildfire-detection-model"
-        # Point to the full SavedModel directory (including variables/, assets/)
         MODEL_URI="gs://${_GCS_BUCKET_NAME}/model/tf_model/"
         IMAGE_URI="us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}"
 
         gcloud ai models upload \
           --region=us-central1 \
-          --display-name="$MODEL_NAME" \
-          --artifact-uri="$MODEL_URI" \
-          --container-image-uri="$IMAGE_URI" \
+          --display-name="$$MODEL_NAME" \
+          --artifact-uri="$$MODEL_URI" \
+          --container-image-uri="$$IMAGE_URI" \
           --container-predict-route="/predict" \
           --container-health-route="/health" \
           --container-ports=8080 \
@@ -70,34 +69,34 @@ steps:
         ENDPOINT_NAME="wildfire-prediction-endpoint"
 
         # Fetch model resource name
-        MODEL_ID=$(gcloud ai models list \
+        MODEL_ID=$$(gcloud ai models list \
           --region=us-central1 \
-          --filter="displayName:$MODEL_NAME" \
+          --filter="displayName:$$MODEL_NAME" \
           --format="value(name)" \
           --limit=1)
 
         # Create or retrieve the endpoint
-        ENDPOINT_ID=$(gcloud ai endpoints list \
+        ENDPOINT_ID=$$(gcloud ai endpoints list \
           --region=us-central1 \
-          --filter="displayName:$ENDPOINT_NAME" \
+          --filter="displayName:$$ENDPOINT_NAME" \
           --format="value(name)" \
           --limit=1)
-        if [ -z "$ENDPOINT_ID" ]; then
-          echo "Creating endpoint $ENDPOINT_NAME..."
-          ENDPOINT_ID=$(gcloud ai endpoints create \
+        if [ -z "$$ENDPOINT_ID" ]; then
+          echo "Creating endpoint $$ENDPOINT_NAME..."
+          ENDPOINT_ID=$$(gcloud ai endpoints create \
             --region=us-central1 \
-            --display-name=$ENDPOINT_NAME \
+            --display-name=$$ENDPOINT_NAME \
             --project=${_PROJECT_ID} \
             --format="value(name)")
         else
-          echo "Using existing endpoint: $ENDPOINT_ID"
+          echo "Using existing endpoint: $$ENDPOINT_ID"
         fi
 
         # Deploy model to endpoint
-        gcloud ai endpoints deploy-model $ENDPOINT_ID \
+        gcloud ai endpoints deploy-model $$ENDPOINT_ID \
           --region=us-central1 \
-          --model=$MODEL_ID \
-          --display-name=deployed-$MODEL_NAME-$SHORT_SHA \
+          --model=$$MODEL_ID \
+          --display-name="deployed-$$MODEL_NAME-${SHORT_SHA}" \
           --machine-type=n1-standard-2 \
           --min-replica-count=1 \
           --max-replica-count=1 \
