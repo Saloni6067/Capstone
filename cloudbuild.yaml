@@ -1,140 +1,113 @@
 substitutions:
-  _PROJECT_ID:      "capstoneproject-462618"
+  _PROJECT_ID: "capstoneproject-462618"
   _GCS_BUCKET_NAME: "capstone-nasa-wildfire-sal"
-  _COMMIT_SHA:      "${SHORT_SHA}"    # or hard‑code if not using a Git trigger
+
+timeout: 10800s  # 3 hours
 
 steps:
-  # 1) Build training container
-  - name: gcr.io/cloud-builders/docker
+  # 1. Build Docker Image
+  - name: 'gcr.io/cloud-builders/docker'
     id: Build_Docker_Image
     args:
       - build
       - -f
       - Dockerfile.train
       - -t
-      - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${_COMMIT_SHA}
+      - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
       - .
 
-  # 2) Push the image to Artifact Registry
-  - name: gcr.io/cloud-builders/docker
+  # 2. Push Image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
     id: Push_Docker_Image
     args:
       - push
-      - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${_COMMIT_SHA}
+      - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
 
-  # 3) Submit Vertex AI GPU training job and stream logs
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+  # 3. Submit Vertex AI Custom Training Job using GPU
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: Vertex_AI_Training
     entrypoint: bash
     args:
       - -c
-      - >
-          set -e
-          echo "=== Starting Vertex AI GPU training ==="
-          JOB_ID=$(
-            gcloud ai custom-jobs create \
-              --region=us-central1 \
-              --display-name=wildfire-train-${_COMMIT_SHA} \
-              --worker-pool-spec=machine-type=n1-standard-8,accelerator-type=nvidia-tesla-t4,accelerator-count=1,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${_COMMIT_SHA} \
-              --args="--bucket=${_GCS_BUCKET_NAME}" \
-              --project=${_PROJECT_ID} \
-              --format="value(name)"
-          )
-          echo "Training job submitted: $JOB_ID"
-          echo "=== Streaming logs ==="
-          gcloud ai custom-jobs stream-logs "$JOB_ID" --region=us-central1 &
-          echo "=== Waiting for job to succeed ==="
-          while true; do
-            STATE=$(
-              gcloud ai custom-jobs describe "$JOB_ID" \
-                --region=us-central1 \
-                --format="value(state)"
-            )
-            echo "Job state: $STATE"
-            if [[ "$STATE" == "SUCCEEDED" ]]; then
-              echo "✅ Training succeeded"
-              break
-            elif [[ "$STATE" == "FAILED" || "$STATE" == "CANCELLED" ]]; then
-              echo "❌ Training failed or cancelled"
-              exit 1
-            fi
-            sleep 30
-          done
+      - |
+        echo "=== Starting Vertex AI GPU training ==="
+        JOB_NAME="wildfire-train-$(date +%s)"
 
-  # 4) Verify model artifacts in GCS
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+        gcloud ai custom-jobs create \
+          --region=us-central1 \
+          --display-name=$JOB_NAME \
+          --project=${_PROJECT_ID} \
+          --worker-pool-spec=machine-type=n1-standard-8,replica-count=1,accelerator-type=NVIDIA_TESLA_T4,accelerator-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA} \
+          --args="--bucket=${_GCS_BUCKET_NAME}", "--epochs=10", "--batch-size=64"
+
+  # 4. Verify Artifacts
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: Verify_Artifacts
     entrypoint: bash
     args:
       - -c
       - |
-          echo "=== Verifying model artifacts ==="
-          gsutil ls gs://${_GCS_BUCKET_NAME}/model/tf_model/saved_model.pb || exit 1
-          gsutil ls gs://${_GCS_BUCKET_NAME}/model/tf_model/variables/variables.index || exit 1
-          echo "✅ Artifacts present"
+        echo "=== Verifying model artifacts ==="
+        gsutil ls gs://${_GCS_BUCKET_NAME}/model/tf_model/saved_model.pb || exit 1
+        gsutil ls gs://${_GCS_BUCKET_NAME}/model/tf_model/variables/variables.index || exit 1
+        echo "Artifacts found and verified."
 
-  # 5) Register the model in Vertex AI
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+  # 5. Register the Model
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: Register_Model
     entrypoint: bash
     args:
       - -c
       - |
-          echo "=== Registering model ==="
-          gcloud ai models upload \
-            --region=us-central1 \
-            --display-name="wildfire-detection-model" \
-            --artifact-uri="gs://${_GCS_BUCKET_NAME}/model/tf_model" \
-            --container-image-uri="us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${_COMMIT_SHA}" \
-            --container-predict-route="/predict" \
-            --container-health-route="/health" \
-            --container-ports=8080 \
-            --project=${_PROJECT_ID}
+        echo "=== Registering model ==="
+        MODEL_URI="gs://${_GCS_BUCKET_NAME}/model/tf_model"
+        IMAGE_URI="us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}"
 
-  # 6) Deploy the model to a Vertex AI endpoint
-  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+        gcloud ai models upload \
+          --region=us-central1 \
+          --display-name="wildfire-detection-model" \
+          --artifact-uri=$MODEL_URI \
+          --container-image-uri=$IMAGE_URI \
+          --container-predict-route="/predict" \
+          --container-health-route="/health" \
+          --container-ports=8080 \
+          --project=${_PROJECT_ID}
+
+  # 6. Deploy to Vertex AI Endpoint
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: Deploy_Model
     entrypoint: bash
     args:
       - -c
       - |
-          echo "=== Deploying model ==="
-          ENDPOINT_NAME="wildfire-prediction-endpoint"
-          ENDPOINT_ID=$(
-            gcloud ai endpoints list \
-              --region=us-central1 \
-              --filter="displayName=$ENDPOINT_NAME" \
-              --format="value(name)" \
-              --limit=1
-          )
-          if [ -z "$ENDPOINT_ID" ]; then
-            echo "Creating endpoint $ENDPOINT_NAME"
-            ENDPOINT_ID=$(
-              gcloud ai endpoints create \
-                --region=us-central1 \
-                --display-name="$ENDPOINT_NAME" \
-                --format="value(name)"
-            )
-          fi
-          MODEL_ID=$(
-            gcloud ai models list \
-              --region=us-central1 \
-              --filter="displayName=wildfire-detection-model" \
-              --format="value(name)" \
-              --limit=1
-          )
-          gcloud ai endpoints deploy-model "$ENDPOINT_ID" \
+        echo "=== Deploying model to endpoint ==="
+        MODEL_ID=$(gcloud ai models list \
+          --region=us-central1 \
+          --filter="displayName=wildfire-detection-model" \
+          --format="value(name)" \
+          --limit=1)
+
+        ENDPOINT_ID=$(gcloud ai endpoints list \
+          --region=us-central1 \
+          --filter="displayName=wildfire-prediction-endpoint" \
+          --format="value(name)" \
+          --limit=1)
+
+        if [ -z "$ENDPOINT_ID" ]; then
+          echo "Creating endpoint..."
+          ENDPOINT_ID=$(gcloud ai endpoints create \
             --region=us-central1 \
-            --model="$MODEL_ID" \
-            --display-name="deployed-wildfire-model-${_COMMIT_SHA}" \
-            --machine-type=n1-standard-2 \
-            --traffic-split=0=100 \
-            --project=${_PROJECT_ID}
+            --display-name=wildfire-prediction-endpoint \
+            --format="value(name)")
+        fi
+
+        gcloud ai endpoints deploy-model $ENDPOINT_ID \
+          --region=us-central1 \
+          --model=$MODEL_ID \
+          --display-name="deployed-wildfire-model" \
+          --machine-type=n1-standard-2 \
+          --traffic-split=0=100 \
+          --project=${_PROJECT_ID}
 
 images:
-  - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${_COMMIT_SHA}
-
-timeout: 10800s
-
-options:
-  logging: CLOUD_LOGGING_ONLY
+  - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
