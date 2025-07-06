@@ -5,14 +5,14 @@ import os
 import tempfile
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import mixed_precision
+from keras import mixed_precision
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from google.cloud import storage
 from imblearn.over_sampling import SMOTE
 from sklearn.metrics import classification_report
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split as sk_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from keras.layers import Dense, Dropout
 from keras.models import Sequential
@@ -44,7 +44,7 @@ def upload_to_gcs(local_path: str, bucket_name: str, gcs_path: str, recursive: b
             for file in files:
                 full_path = os.path.join(root, file)
                 rel_path = os.path.relpath(full_path, local_path)
-                blob = bucket.blob(os.path.join(gcs_path, rel_path).replace('\\', '/'))
+                blob = bucket.blob(os.path.join(gcs_path, rel_path).replace("\\", "/"))
                 blob.upload_from_filename(full_path)
     else:
         blob = bucket.blob(gcs_path)
@@ -60,10 +60,9 @@ def load_data(data_dir: str, filename: str = "NASA.csv") -> pd.DataFrame:
 def train_and_evaluate(df: pd.DataFrame, model_dir: str, bucket: str = None,
                        epochs: int = 10, batch_size: int = 64):
     # Use only 50% of data with stratified sampling to reduce memory and maintain class balance
-from sklearn.model_selection import train_test_split as sk_split
-# Stratified sample 50% of the data based on 'confidence'
-_, df = sk_split(df, train_size=0.5, stratify=df['confidence'], random_state=42)
-# Preprocessing
+    _, df = sk_split(df, train_size=0.5, stratify=df['confidence'], random_state=42)
+
+    # Preprocessing
     df = df.drop(columns=['satellite', 'instrument', 'version'])
     le = LabelEncoder()
     df['confidence_N'] = le.fit_transform(df['confidence'])
@@ -78,14 +77,15 @@ _, df = sk_split(df, train_size=0.5, stratify=df['confidence'], random_state=42)
     X_scaled = StandardScaler().fit_transform(X_res)
 
     # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(
+    X_train, X_test, y_train, y_test = sk_split(
         X_scaled, y_res, test_size=0.2, random_state=42
     )
 
     # Build TensorFlow datasets for performance
     train_ds = tf.data.Dataset.from_tensor_slices((X_train, y_train))
     train_ds = train_ds.shuffle(1024).batch(batch_size).prefetch(tf.data.AUTOTUNE)
-    val_ds = tf.data.Dataset.from_tensor_slices((X_train, y_train)).batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    val_ds = tf.data.Dataset.from_tensor_slices((X_train, y_train))
+    val_ds = val_ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
     # Build model
     model = Sequential([
