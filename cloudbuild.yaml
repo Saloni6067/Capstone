@@ -45,7 +45,7 @@ steps:
       - |
         echo "=== Registering model in Vertex AI ==="
         MODEL_NAME="wildfire-detection-model"
-        MODEL_URI="gs://${_GCS_BUCKET_NAME}/model/tf_model/"
+        MODEL_URI="gs://${_GCS_BUCKET_NAME}/model/"
         IMAGE_URI="us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}"
 
         gcloud ai models upload \

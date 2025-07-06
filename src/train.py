@@ -34,15 +34,19 @@ def upload_to_gcs(local_path: str, bucket_name: str, gcs_path: str, recursive=Fa
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
     if recursive and os.path.isdir(local_path):
+        file_count = 0
         for root, _, files in os.walk(local_path):
             for file in files:
                 local_file_path = os.path.join(root, file)
                 relative_path = os.path.relpath(local_file_path, local_path)
                 blob = bucket.blob(os.path.join(gcs_path, relative_path))
                 blob.upload_from_filename(local_file_path)
+                file_count += 1
+        print(f"Uploaded {file_count} files to gs://{bucket_name}/{gcs_path}")  # ADDED
     else:
         blob = bucket.blob(gcs_path)
         blob.upload_from_filename(local_path)
+        print(f"Uploaded file to gs://{bucket_name}/{gcs_path}")  # ADDED
 
 
 def load_data(data_dir: str, filename: str = "NASA.csv") -> pd.DataFrame:
