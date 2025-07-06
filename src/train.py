@@ -59,7 +59,11 @@ def load_data(data_dir: str, filename: str = "NASA.csv") -> pd.DataFrame:
 
 def train_and_evaluate(df: pd.DataFrame, model_dir: str, bucket: str = None,
                        epochs: int = 10, batch_size: int = 64):
-    # Preprocessing
+    # Use only 50% of data with stratified sampling to reduce memory and maintain class balance
+from sklearn.model_selection import train_test_split as sk_split
+# Stratified sample 50% of the data based on 'confidence'
+_, df = sk_split(df, train_size=0.5, stratify=df['confidence'], random_state=42)
+# Preprocessing
     df = df.drop(columns=['satellite', 'instrument', 'version'])
     le = LabelEncoder()
     df['confidence_N'] = le.fit_transform(df['confidence'])
