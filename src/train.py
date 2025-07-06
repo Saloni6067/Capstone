@@ -84,7 +84,7 @@ def train_and_evaluate(df: pd.DataFrame, model_dir: str, bucket: str = None):
         X_train, y_train,
         validation_split=0.2,
         epochs=20,
-        batch_size=32,
+        batch_size=16,
         callbacks=[EarlyStopping('val_loss', patience=6, restore_best_weights=True)],
         verbose=1
     )
