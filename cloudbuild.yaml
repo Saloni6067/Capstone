@@ -3,7 +3,6 @@ substitutions:
   _GCS_BUCKET_NAME: "capstone-nasa-wildfire-sal"
 
 steps:
-  # 1) Build training container
   - name: 'gcr.io/cloud-builders/docker'
     id: Build_Docker_Image
     args:
@@ -14,14 +13,12 @@ steps:
       - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
       - .
 
-  # 2) Push the image
   - name: 'gcr.io/cloud-builders/docker'
     id: Push_Docker_Image
     args:
       - push
       - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
 
-  # 3) Submit Vertex AI training job with higher-memory machine and wait for completion
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: Vertex_AI_Training
     entrypoint: bash
@@ -29,13 +26,13 @@ steps:
       - -c
       - |
         set -e
-        echo "=== Starting Vertex AI training job (highmem machine) ==="
+        echo "=== Starting Vertex AI training job ==="
         JOB_NAME="wildfire-train-${SHORT_SHA}"
 
         JOB_ID=$$(gcloud ai custom-jobs create \
           --region=us-central1 \
           --display-name=$$JOB_NAME \
-          --worker-pool-spec=machine-type=n1-highmem-4,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA} \
+          --worker-pool-spec=machine-type=n1-highmem-8,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA} \
           --args="--bucket=${_GCS_BUCKET_NAME}" \
           --format="value(name)")
 
@@ -48,16 +45,15 @@ steps:
           STATE=$$(gcloud ai custom-jobs describe $$JOB_ID --region=us-central1 --format="value(state)")
           echo "Job state: $$STATE"
           if [[ "$$STATE" == "SUCCEEDED" ]]; then
-            echo "✅ Training succeeded"
+            echo "Training succeeded"
             break
           elif [[ "$$STATE" == "FAILED" || "$$STATE" == "CANCELLED" ]]; then
-            echo "❌ Training failed or cancelled"
+            echo "Training failed or cancelled"
             exit 1
           fi
           sleep 30
         done
 
-  # 4) Verify model artifacts in GCS
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: Verify_Artifacts
     entrypoint: bash
@@ -67,9 +63,8 @@ steps:
         echo "=== Verifying model artifacts ==="
         gsutil ls gs://${_GCS_BUCKET_NAME}/model/tf_model/saved_model.pb || exit 1
         gsutil ls gs://${_GCS_BUCKET_NAME}/model/tf_model/variables/variables.index || exit 1
-        echo "✅ Artifacts present"
+        echo "Artifacts present"
 
-  # 5) Register the model
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: Register_Model
     entrypoint: bash
@@ -91,7 +86,6 @@ steps:
           --container-ports=8080 \
           --project=${_PROJECT_ID}
 
-  # 6) Deploy the model
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: Deploy_Model
     entrypoint: bash
