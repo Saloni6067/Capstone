@@ -1,6 +1,7 @@
 substitutions:
   _PROJECT_ID: "capstoneproject-462618"
   _GCS_BUCKET_NAME: "capstone-nasa-wildfire-sal"
+  _COMMIT_SHA: "latest"  # or use ${SHORT_SHA} if you're using a trigger with commit info
 
 steps:
   # 1) Build training container
@@ -11,7 +12,7 @@ steps:
       - -f
       - Dockerfile.train
       - -t
-      - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
+      - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${_COMMIT_SHA}
       - .
 
   # 2) Push the image to Artifact Registry
@@ -19,7 +20,7 @@ steps:
     id: Push_Docker_Image
     args:
       - push
-      - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
+      - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${_COMMIT_SHA}
 
   # 3) Submit Vertex AI GPU training job and stream logs
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
@@ -33,29 +34,29 @@ steps:
           JOB_ID=$(
             gcloud ai custom-jobs create \
               --region=us-central1 \
-              --display-name=wildfire-train-${COMMIT_SHA} \
-              --worker-pool-spec=machine-type=n1-standard-8,accelerator-type=nvidia-tesla-t4,accelerator-count=1,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA} \
+              --display-name=wildfire-train-${_COMMIT_SHA} \
+              --worker-pool-spec=machine-type=n1-standard-8,accelerator-type=nvidia-tesla-t4,accelerator-count=1,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${_COMMIT_SHA} \
               --args="--bucket=${_GCS_BUCKET_NAME}" \
               --project=${_PROJECT_ID} \
               --format="value(name)"
           )
-          echo "Training job submitted: $JOB_ID"
+          echo "Training job submitted: \$JOB_ID"
           echo "=== Streaming logs ==="
-          gcloud ai custom-jobs stream-logs "$JOB_ID" --region=us-central1 &
+          gcloud ai custom-jobs stream-logs "\$JOB_ID" --region=us-central1 &
 
           echo "=== Waiting for job to succeed ==="
           while true; do
             STATE=$(
-              gcloud ai custom-jobs describe "$JOB_ID" \
+              gcloud ai custom-jobs describe "\$JOB_ID" \
                 --region=us-central1 \
                 --format="value(state)"
             )
-            echo "Job state: $STATE"
-            if [[ "$STATE" == "SUCCEEDED" ]]; then
-              echo "✅ Training succeeded"
+            echo "Job state: \$STATE"
+            if [[ "\$STATE" == "SUCCEEDED" ]]; then
+              echo "Training succeeded"
               break
-            elif [[ "$STATE" == "FAILED" || "$STATE" == "CANCELLED" ]]; then
-              echo "❌ Training failed or cancelled"
+            elif [[ "\$STATE" == "FAILED" || "\$STATE" == "CANCELLED" ]]; then
+              echo "Training failed or cancelled"
               exit 1
             fi
             sleep 30
@@ -71,7 +72,7 @@ steps:
           echo "=== Verifying model artifacts ==="
           gsutil ls gs://${_GCS_BUCKET_NAME}/model/tf_model/saved_model.pb || exit 1
           gsutil ls gs://${_GCS_BUCKET_NAME}/model/tf_model/variables/variables.index || exit 1
-          echo "✅ Artifacts present"
+          echo "Artifacts present"
 
   # 5) Register the model in Vertex AI
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
@@ -85,7 +86,7 @@ steps:
             --region=us-central1 \
             --display-name="wildfire-detection-model" \
             --artifact-uri="gs://${_GCS_BUCKET_NAME}/model/tf_model" \
-            --container-image-uri="us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}" \
+            --container-image-uri="us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${_COMMIT_SHA}" \
             --container-predict-route="/predict" \
             --container-health-route="/health" \
             --container-ports=8080 \
@@ -126,15 +127,14 @@ steps:
           gcloud ai endpoints deploy-model "$ENDPOINT_ID" \
             --region=us-central1 \
             --model="$MODEL_ID" \
-            --display-name="deployed-wildfire-model-${COMMIT_SHA}" \
+            --display-name="deployed-wildfire-model-${_COMMIT_SHA}" \
             --machine-type=n1-standard-2 \
             --traffic-split=0=100 \
             --project=${_PROJECT_ID}
 
 images:
-  - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
+  - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${_COMMIT_SHA}
 
-# Let the build run up to 3 hours (10800 seconds)
 timeout: 10800s
 
 options:
