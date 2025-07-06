@@ -5,6 +5,7 @@ import os
 import tempfile
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.keras import mixed_precision
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -16,6 +17,11 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from keras.layers import Dense, Dropout
 from keras.models import Sequential
 from keras.callbacks import EarlyStopping
+
+# Enable mixed precision for faster training
+mixed_precision.set_global_policy('mixed_float16')
+# Enable XLA JIT compiler
+tf.config.optimizer.set_jit(True)
 
 
 def download_from_gcs(bucket_name: str, prefix: str, local_dir: str):
@@ -40,11 +46,9 @@ def upload_to_gcs(local_path: str, bucket_name: str, gcs_path: str, recursive: b
                 rel_path = os.path.relpath(full_path, local_path)
                 blob = bucket.blob(os.path.join(gcs_path, rel_path).replace('\\', '/'))
                 blob.upload_from_filename(full_path)
-                print(f"Uploaded {full_path} to gs://{bucket_name}/{gcs_path}/{rel_path}")
     else:
         blob = bucket.blob(gcs_path)
         blob.upload_from_filename(local_path)
-        print(f"Uploaded {local_path} to gs://{bucket_name}/{gcs_path}")
 
 
 def load_data(data_dir: str, filename: str = "NASA.csv") -> pd.DataFrame:
@@ -53,7 +57,8 @@ def load_data(data_dir: str, filename: str = "NASA.csv") -> pd.DataFrame:
     return pd.read_csv(path)
 
 
-def train_and_evaluate(df: pd.DataFrame, model_dir: str, bucket: str = None):
+def train_and_evaluate(df: pd.DataFrame, model_dir: str, bucket: str = None,
+                       epochs: int = 10, batch_size: int = 64):
     # Preprocessing
     df = df.drop(columns=['satellite', 'instrument', 'version'])
     le = LabelEncoder()
@@ -62,45 +67,60 @@ def train_and_evaluate(df: pd.DataFrame, model_dir: str, bucket: str = None):
 
     features = ['latitude', 'longitude', 'brightness', 'bright_t31', 'frp',
                 'scan', 'track', 'daynight_N', 'type']
-    X, y = df[features], df['confidence_N']
+    X, y = df[features].values, df['confidence_N'].values
 
+    # Balance and scale
     X_res, y_res = SMOTE(random_state=42).fit_resample(X, y)
     X_scaled = StandardScaler().fit_transform(X_res)
+
+    # Train-test split
     X_train, X_test, y_train, y_test = train_test_split(
         X_scaled, y_res, test_size=0.2, random_state=42
     )
 
-    # Model building
+    # Build TensorFlow datasets for performance
+    train_ds = tf.data.Dataset.from_tensor_slices((X_train, y_train))
+    train_ds = train_ds.shuffle(1024).batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    val_ds = tf.data.Dataset.from_tensor_slices((X_train, y_train)).batch(batch_size).prefetch(tf.data.AUTOTUNE)
+
+    # Build model
     model = Sequential([
         Dense(64, activation='relu', input_shape=(X_train.shape[1],)),
         Dropout(0.3),
         Dense(32, activation='relu'),
         Dropout(0.2),
-        Dense(len(np.unique(y_res)), activation='softmax')
+        Dense(len(np.unique(y_res)), activation='softmax', dtype='float32')
     ])
-    model.compile('adam', 'sparse_categorical_crossentropy', ['accuracy'])
+    model.compile(
+        optimizer='adam',
+        loss='sparse_categorical_crossentropy',
+        metrics=['accuracy'],
+        jit_compile=True
+    )
 
+    # Train
     history = model.fit(
-        X_train, y_train,
-        validation_split=0.2,
-        epochs=20,
-        batch_size=32,
-        callbacks=[EarlyStopping('val_loss', patience=6, restore_best_weights=True)],
+        train_ds,
+        validation_data=val_ds,
+        epochs=epochs,
+        callbacks=[EarlyStopping('val_loss', patience=3, restore_best_weights=True)],
         verbose=1
     )
 
+    # Evaluate
     print("\nClassification Report:")
-    print(classification_report(y_test, np.argmax(model.predict(X_test), axis=1),
-                                target_names=le.classes_))
+    preds = model.predict(tf.data.Dataset.from_tensor_slices(X_test).batch(batch_size))
+    y_pred = np.argmax(preds, axis=1)
+    print(classification_report(y_test, y_pred, target_names=le.classes_))
 
-    # Save locally
+    # Save artifacts
     os.makedirs(model_dir, exist_ok=True)
     saved_model_dir = os.path.join(model_dir, 'tf_model')
     model.save(saved_model_dir)
     scaler_path = os.path.join(model_dir, 'scaler.pkl')
     pd.to_pickle(StandardScaler().fit(X_res), scaler_path)
 
-    # Loss plot
+    # Plot loss
     plt.plot(history.history['loss'], label='train_loss')
     plt.plot(history.history['val_loss'], label='val_loss')
     plt.xlabel('Epoch'); plt.ylabel('Loss'); plt.legend()
@@ -109,7 +129,6 @@ def train_and_evaluate(df: pd.DataFrame, model_dir: str, bucket: str = None):
 
     # Upload to GCS
     if bucket:
-        print(f"Uploading to gs://{bucket}/model/tf_model/")
         upload_to_gcs(saved_model_dir, bucket, 'model/tf_model', recursive=True)
         upload_to_gcs(scaler_path, bucket, 'model/scaler.pkl')
         upload_to_gcs(loss_plot, bucket, 'model/loss_curve.png')
@@ -120,12 +139,15 @@ def main():
     p.add_argument('--bucket', default='capstone-nasa-wildfire-sal')
     p.add_argument('--prefix', default='data/')
     p.add_argument('--model-dir', default='temp/model')
+    p.add_argument('--epochs', type=int, default=10, help='Number of training epochs')
+    p.add_argument('--batch-size', type=int, default=64, help='Training batch size')
     args = p.parse_args()
 
     with tempfile.TemporaryDirectory() as tmp:
         download_from_gcs(args.bucket, args.prefix, tmp)
         df = load_data(tmp)
-    train_and_evaluate(df, args.model_dir, args.bucket)
+    train_and_evaluate(df, args.model_dir, args.bucket,
+                       epochs=args.epochs, batch_size=args.batch_size)
 
 
 if __name__ == '__main__':
