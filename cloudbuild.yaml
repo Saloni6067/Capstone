@@ -2,7 +2,7 @@ substitutions:
   _PROJECT_ID: "capstoneproject-462618"
   _GCS_BUCKET_NAME: "capstone-nasa-wildfire-sal"
 
-timeout: 10800s  # 3 hours
+timeout: 21600s
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -53,10 +53,10 @@ steps:
               --region=us-central1 --format="value(state)")
             echo "Job state: $$STATE"
             if [[ "$$STATE" == "SUCCEEDED" ]]; then
-              echo "✅ Training succeeded"
+              echo "Training succeeded"
               break
             elif [[ "$$STATE" == "FAILED" || "$$STATE" == "CANCELLED" ]]; then
-              echo "❌ Training failed or cancelled"
+              echo "Training failed or cancelled"
               exit 1
             fi
             sleep 30
@@ -72,7 +72,7 @@ steps:
           echo "=== Verifying model artifacts ==="
           gsutil ls gs://${_GCS_BUCKET_NAME}/model/tf_model/saved_model.pb || exit 1
           gsutil ls gs://${_GCS_BUCKET_NAME}/model/tf_model/variables/variables.index || exit 1
-          echo "✅ Artifacts present"
+          echo "Artifacts present"
 
   # 5) Register the model
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"

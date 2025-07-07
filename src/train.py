@@ -58,7 +58,7 @@ def load_data(data_dir: str, filename: str = "NASA.csv") -> pd.DataFrame:
 
 
 def train_and_evaluate(df: pd.DataFrame, model_dir: str, bucket: str = None,
-                       epochs: int = 10, batch_size: int = 64):
+                       epochs: int = 10, batch_size: int = 256):
     # Use only 50% of data with stratified sampling to reduce memory and maintain class balance
     _, df = sk_split(df, train_size=0.5, stratify=df['confidence'], random_state=42)
 
