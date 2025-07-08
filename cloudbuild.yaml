@@ -28,7 +28,6 @@ steps:
       - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
 
   # 3) Submit Vertex AI training job (CPU highmem) and stream logs
-    # 3) Submit Vertex AI training job (CPU highmem) and stream logs + poll
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: Vertex_AI_Training
     entrypoint: bash
@@ -40,7 +39,7 @@ steps:
           JOB_NAME="wildfire-train-${COMMIT_SHA}"
           JOB_ID=$$(gcloud ai custom-jobs create \
             --region=us-central1 \
-            --display-name=$JOB_NAME \
+            --display-name=$$JOB_NAME \
             --worker-pool-spec=machine-type=n1-highmem-8,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA} \
             --args="--bucket=${_GCS_BUCKET_NAME},--epochs=10,--batch-size=64" \
             --project=${_PROJECT_ID} \
