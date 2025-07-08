@@ -2,6 +2,8 @@ substitutions:
   _PROJECT_ID: "capstoneproject-462618"
   _GCS_BUCKET_NAME: "capstone-nasa-wildfire-sal"
 
+timeout: 21600s  # <-- Add this here
+
 options:
   logging: CLOUD_LOGGING_ONLY
   default_logs_bucket_behavior: REGIONAL_USER_OWNED_BUCKET
@@ -26,6 +28,7 @@ steps:
       - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
 
   # 3) Submit Vertex AI training job (CPU highmem) and stream logs
+    # 3) Submit Vertex AI training job (CPU highmem) and stream logs + poll
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: Vertex_AI_Training
     entrypoint: bash
@@ -34,10 +37,10 @@ steps:
       - |
           set -e
           echo "=== Starting Vertex AI CPU training ==="
+          JOB_NAME="wildfire-train-${COMMIT_SHA}"
           JOB_ID=$$(gcloud ai custom-jobs create \
             --region=us-central1 \
-            --display-name=wildfire-train-${COMMIT_SHA} \
-            --sync \
+            --display-name=$JOB_NAME \
             --worker-pool-spec=machine-type=n1-highmem-8,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA} \
             --args="--bucket=${_GCS_BUCKET_NAME},--epochs=10,--batch-size=64" \
             --project=${_PROJECT_ID} \
@@ -46,20 +49,22 @@ steps:
           echo "=== Streaming logs ==="
           gcloud ai custom-jobs stream-logs $$JOB_ID --region=us-central1 &
 
-          echo "=== Waiting for job to succeed ==="
+          echo "=== Polling for job completion ==="
           while true; do
             STATE=$$(gcloud ai custom-jobs describe $$JOB_ID \
-              --region=us-central1 --format="value(state)")
+              --region=us-central1 \
+              --format="value(state)")
             echo "Job state: $$STATE"
-            if [[ "$$STATE" == "SUCCEEDED" ]]; then
+            if [[ "$$STATE" == *"SUCCEEDED"* ]]; then
               echo "Training succeeded"
               break
-            elif [[ "$$STATE" == "FAILED" || "$$STATE" == "CANCELLED" ]]; then
+            elif [[ "$$STATE" == *"FAILED"* || "$$STATE" == *"CANCELLED"* ]]; then
               echo "Training failed or cancelled"
               exit 1
             fi
-            sleep 30
+            sleep 60
           done
+
 
   # 4) Verify artifacts
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
@@ -126,5 +131,4 @@ steps:
 images:
   - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
 
-timeout: 21600s  # <-- Add this here
 
