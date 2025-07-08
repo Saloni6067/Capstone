@@ -2,8 +2,6 @@ substitutions:
   _PROJECT_ID: "capstoneproject-462618"
   _GCS_BUCKET_NAME: "capstone-nasa-wildfire-sal"
 
-timeout: 21600s
-
 options:
   logging: CLOUD_LOGGING_ONLY
   default_logs_bucket_behavior: REGIONAL_USER_OWNED_BUCKET
@@ -39,6 +37,7 @@ steps:
           JOB_ID=$$(gcloud ai custom-jobs create \
             --region=us-central1 \
             --display-name=wildfire-train-${COMMIT_SHA} \
+            --sync \
             --worker-pool-spec=machine-type=n1-highmem-8,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA} \
             --args="--bucket=${_GCS_BUCKET_NAME},--epochs=10,--batch-size=64" \
             --project=${_PROJECT_ID} \
@@ -126,3 +125,6 @@ steps:
 # Built image
 images:
   - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
+
+timeout: 21600s  # <-- Add this here
+
