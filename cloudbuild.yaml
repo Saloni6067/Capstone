@@ -89,7 +89,7 @@ steps:
             --region=us-central1 \
             --display-name="wildfire-detection-model" \
             --artifact-uri="gs://${_GCS_BUCKET_NAME}/model/tf_model" \
-            --container-image-uri="us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-serve:${COMMIT_SHA}" \
+            --container-image-uri="us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}" \
             --container-predict-route="/predict" \
             --container-health-route="/health" \
             --container-ports=8080 \
