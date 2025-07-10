@@ -141,6 +141,6 @@ steps:
             --region=us-central1 \
             --model=$$MODEL_ID \
             --display-name="deployed-wildfire-model-${COMMIT_SHA}" \
-            --machine-type=n1-standard-2 \
+            --machine-type=n1-highmem-4\
             --traffic-split=0=100 \
             --project=${_PROJECT_ID}
