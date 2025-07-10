@@ -29,6 +29,7 @@ steps:
       - push
       - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
 
+
   # 3) Submit Vertex AI training job, stream logs & poll for completion
 #  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
 #    id: Vertex_AI_Training
