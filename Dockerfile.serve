@@ -2,12 +2,21 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-# Copy and upgrade pip first
-COPY requirements.txt .
-RUN python -m pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+# 1) Install TF native dependencies
+RUN apt-get update && apt-get install -y \
+      libgomp1 \
+      libatlas3-base \
+      libopenblas-dev \
+    && rm -rf /var/lib/apt/lists/*
 
+# 2) Copy & install Python deps
+COPY requirements.txt .
+RUN python -m pip install --upgrade pip \
+ && pip install --no-cache-dir -r requirements.txt
+
+# 3) Copy your serve code
 COPY src/ ./src
 
 EXPOSE 8080
+
 ENTRYPOINT ["python", "src/serve.py"]

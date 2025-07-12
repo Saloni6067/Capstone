@@ -31,40 +31,40 @@ steps:
       - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
 
   # 3) Submit Vertex AI training job (CPU highmem) and stream logs
-#  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-#    id: Vertex_AI_Training
-#    entrypoint: bash
-#    args:
-#      - -c
-#      - |
-#          set -e
-#          echo "=== Starting Vertex AI CPU training ==="
-#          JOB_NAME="wildfire-train-$${COMMIT_SHA}"
-#          JOB_ID=$$(gcloud ai custom-jobs create \
-#            --region=us-central1 \
-#            --display-name=$$JOB_NAME \
-#            --worker-pool-spec=machine-type=n1-highmem-8,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA} \
-#            --args="--bucket=${_GCS_BUCKET_NAME},--epochs=10,--batch-size=256" \
-#            --project=${_PROJECT_ID} \
-#            --format="value(name)")
-#          echo "Training job submitted: $$JOB_ID"
-#          echo "=== Streaming logs ==="
-#          gcloud ai custom-jobs stream-logs $$JOB_ID --region=us-central1 &
-#          echo "=== Polling for job completion ==="
-#          while true; do
-#            STATE=$$(gcloud ai custom-jobs describe $$JOB_ID \
-#              --region=us-central1 \
-#              --format="value(state)")
-#            echo "Job state: $$STATE"
-#            if [[ "$$STATE" == *"SUCCEEDED"* ]]; then
-#              echo "Training succeeded"
-#              break
-#            elif [[ "$$STATE" == *"FAILED"* || "$$STATE" == *"CANCELLED"* ]]; then
-#              echo "Training failed or cancelled"
-#              exit 1
-#            fi
-#            sleep 60
-#          done
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: Vertex_AI_Training
+    entrypoint: bash
+    args:
+      - -c
+      - |
+          set -e
+          echo "=== Starting Vertex AI CPU training ==="
+          JOB_NAME="wildfire-train-$${COMMIT_SHA}"
+          JOB_ID=$$(gcloud ai custom-jobs create \
+            --region=us-central1 \
+            --display-name=$$JOB_NAME \
+            --worker-pool-spec=machine-type=n1-highmem-8,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA} \
+            --args="--bucket=${_GCS_BUCKET_NAME},--epochs=10,--batch-size=256" \
+            --project=${_PROJECT_ID} \
+            --format="value(name)")
+          echo "Training job submitted: $$JOB_ID"
+          echo "=== Streaming logs ==="
+          gcloud ai custom-jobs stream-logs $$JOB_ID --region=us-central1 &
+          echo "=== Polling for job completion ==="
+          while true; do
+            STATE=$$(gcloud ai custom-jobs describe $$JOB_ID \
+              --region=us-central1 \
+              --format="value(state)")
+            echo "Job state: $$STATE"
+            if [[ "$$STATE" == *"SUCCEEDED"* ]]; then
+              echo "Training succeeded"
+              break
+            elif [[ "$$STATE" == *"FAILED"* || "$$STATE" == *"CANCELLED"* ]]; then
+              echo "Training failed or cancelled"
+              exit 1
+            fi
+            sleep 60
+          done
 
   # 4) Verify that the SavedModel directory is in GCS
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
