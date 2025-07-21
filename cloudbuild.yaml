@@ -77,7 +77,7 @@ steps:
           gsutil ls gs://${_GCS_BUCKET_NAME}/model/tf_model/saved_model.pb || exit 1
           gsutil ls gs://${_GCS_BUCKET_NAME}/model/tf_model/variables/variables.index || exit 1
           echo "Artifacts present"
-
+ 
   # 5a) Build the inference (serve) container
   - name: "gcr.io/cloud-builders/docker"
     id: Build_Serve_Image
