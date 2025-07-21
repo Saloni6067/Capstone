@@ -30,7 +30,7 @@ steps:
       - push
       - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
 
-  # 3) Submit Vertex AI training job (CPU highmem) and stream logs
+  # 3) Submit Vertex AI training job (smaller machine for cost savings) and stream logs
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: Vertex_AI_Training
     entrypoint: bash
@@ -38,18 +38,18 @@ steps:
       - -c
       - |
           set -e
-          echo "=== Starting Vertex AI CPU training ==="
+          echo "=== Starting Vertex AI CPU training on n1-standard-2 ==="
           JOB_NAME="wildfire-train-$${COMMIT_SHA}"
           JOB_ID=$$(gcloud ai custom-jobs create \
             --region=us-central1 \
             --display-name=$$JOB_NAME \
-            --worker-pool-spec=machine-type=n1-highmem-8,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA} \
+            --worker-pool-spec=machine-type=n1-standard-2,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA} \
             --args="--bucket=${_GCS_BUCKET_NAME},--epochs=10,--batch-size=256" \
             --project=${_PROJECT_ID} \
             --format="value(name)")
           echo "Training job submitted: $$JOB_ID"
           echo "=== Streaming logs ==="
-          gcloud ai custom-jobs stream-logs $$JOB_ID --region=us-central1 &
+          gcloud ai custom-jobs stream-logs $$JOB_ID --region=us-central1 & 
           echo "=== Polling for job completion ==="
           while true; do
             STATE=$$(gcloud ai custom-jobs describe $$JOB_ID \
@@ -77,7 +77,7 @@ steps:
           gsutil ls gs://${_GCS_BUCKET_NAME}/model/tf_model/saved_model.pb || exit 1
           gsutil ls gs://${_GCS_BUCKET_NAME}/model/tf_model/variables/variables.index || exit 1
           echo "Artifacts present"
- 
+
   # 5a) Build the inference (serve) container
   - name: "gcr.io/cloud-builders/docker"
     id: Build_Serve_Image
@@ -114,14 +114,14 @@ steps:
             --container-ports=8080 \
             --project=${_PROJECT_ID}
 
-  # 7) Deploy the model to a Vertex AI Endpoint (async)
+  # 7) Deploy the model to a Vertex AI Endpoint (using a smaller machine for cost savings)
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: Deploy_Model
     entrypoint: bash
     args:
       - -c
       - |
-          echo "=== Deploying model to Vertex AI endpoint ==="
+          echo "=== Deploying model to Vertex AI endpoint on n1-standard-2 ==="
           ENDPOINT_ID=$$(gcloud ai endpoints list \
             --region=us-central1 \
             --filter="displayName=wildfire-prediction-endpoint" \
@@ -141,9 +141,9 @@ steps:
             --region=us-central1 \
             --model=$$MODEL_ID \
             --display-name="deployed-wildfire-model-${COMMIT_SHA}" \
-            --machine-type=n1-highmem-4 \
+            --machine-type=n1-standard-2 \
             --traffic-split=0=100 \
-            --project=${_PROJECT_ID} 
+            --project=${_PROJECT_ID}
 
 # Declare the built images so Cloud Build can report them
 images:
