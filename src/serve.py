@@ -5,6 +5,7 @@ import os
 import numpy as np
 from google.cloud import storage
 import shutil
+import pickle
 
 app = Flask(__name__)
 
@@ -32,13 +33,17 @@ if gcs_model_uri:
         os.makedirs(os.path.dirname(dest_path), exist_ok=True)
         blob.download_to_filename(dest_path)
 else:
-    # If no AIP_STORAGE_URI, assume your Docker IMAGE baked in a /model folder
-    print("AIP_STORAGE_URI not set, expecting /model baked into image")
+    # If no AIP_STORAGE_URI, assume you're testing locally
+    local_model_dir = "model\\tf_model"  # Change if your model folder has a different name or path
+    print("Running locally using model from:", local_model_dir)
 
 # 3) Finally load the model
 model = tf.keras.models.load_model(local_model_dir)
+with open("/model/scaler.pkl", "rb") as f:
+    scaler = pickle.load(f)
+CLASS_MAP = {0: 'h', 1: 'l', 2: 'n'}
 
-@app.route("/predict", methods=["POST"])
+@app.route('/predict', methods=['POST'])
 def predict():
     req = request.get_json(force=True)
     instances = req.get("instances")
@@ -46,14 +51,16 @@ def predict():
         return jsonify({"error": "Request JSON must have an 'instances' key."}), 400
 
     data = np.array(instances, dtype=np.float32)
-    preds = model.predict(data)
+    data_scaled = scaler.transform(data)   # <-- Scale input
 
+    preds = model.predict(data_scaled)
     if preds.ndim == 2 and preds.shape[1] > 1:
-        result = np.argmax(preds, axis=1).tolist()
+        result = np.argmax(preds, axis=1)
+        labels = [CLASS_MAP[i] for i in result]
     else:
-        result = preds.flatten().tolist()
+        labels = preds.flatten().tolist()
 
-    return jsonify({"predictions": result})
+    return jsonify({"predictions": labels})
 
 @app.route("/health", methods=["GET"])
 def health():

@@ -3,22 +3,22 @@ import pandas as pd
 import tensorflow as tf
 
 # 1) Load your saved artifacts
-model = tf.keras.models.load_model('model_output/tf_model')
-scaler = pd.read_pickle('model_output/scaler.pkl')
+model = tf.keras.models.load_model('model/tf_model')
+scaler = pd.read_pickle('model/scaler.pkl')
 
 # 2) Build a DataFrame for your new samples
 #    (must have exactly the same columns & order as during training)
 new_data = pd.DataFrame([
     {
-        'latitude': 66.93,
-        'longitude': 80.73,
-        'brightness': 322.94,
-        'bright_t31': 246.4,
-        'frp': 3.11,     # will be capped below
-        'scan': 0.68,
-        'track': 0.74,
+        'latitude': 68.41,
+        'longitude': 83.61,
+        'brightness': 329.46,
+        'bright_t31': 247.02,
+        'frp': 3.61,     # will be capped below
+        'scan': 0.58,
+        'track': 0.7,
         'daynight': 'N',  # 'D' or 'N'
-        'type': 0
+        'type': 2
     }
 ])
 
