@@ -33,7 +33,7 @@ if gcs_model_uri:
         blob.download_to_filename(dest_path)
 else:
     # If no AIP_STORAGE_URI, assume your Docker IMAGE baked in a /model folder
-    print("⚠️  AIP_STORAGE_URI not set, expecting /model baked into image")
+    print("AIP_STORAGE_URI not set, expecting /model baked into image")
 
 # 3) Finally load the model
 model = tf.keras.models.load_model(local_model_dir)
