@@ -30,7 +30,7 @@ steps:
       - push
       - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA}
 
-  # 3) Submit Vertex AI training job (smaller machine for cost savings) and stream logs
+  # 3) Submit Vertex AI training job (n1-standard-4) and stream logs
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: Vertex_AI_Training
     entrypoint: bash
@@ -38,12 +38,12 @@ steps:
       - -c
       - |
           set -e
-          echo "=== Starting Vertex AI CPU training on n1-standard-2 ==="
+          echo "=== Starting Vertex AI CPU training on n1-standard-4 ==="
           JOB_NAME="wildfire-train-$${COMMIT_SHA}"
           JOB_ID=$$(gcloud ai custom-jobs create \
             --region=us-central1 \
             --display-name=$$JOB_NAME \
-            --worker-pool-spec=machine-type=n1-standard-2,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA} \
+            --worker-pool-spec=machine-type=n1-standard-4,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/ml-model:${COMMIT_SHA} \
             --args="--bucket=${_GCS_BUCKET_NAME},--epochs=10,--batch-size=256" \
             --project=${_PROJECT_ID} \
             --format="value(name)")
@@ -114,7 +114,7 @@ steps:
             --container-ports=8080 \
             --project=${_PROJECT_ID}
 
-  # 7) Deploy the model to a Vertex AI Endpoint (using a smaller machine for cost savings)
+  # 7) Deploy the model to a Vertex AI Endpoint (n1-standard-2 for cheaper serving)
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: Deploy_Model
     entrypoint: bash
