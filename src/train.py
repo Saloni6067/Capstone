@@ -153,9 +153,11 @@ def train_and_evaluate(df: pd.DataFrame, model_dir: str, bucket: str=None,
 
     # 14) Save
     os.makedirs(model_dir, exist_ok=True)
-    model.save(os.path.join(model_dir, 'tf_model'))
-    pd.to_pickle(scaler, os.path.join(model_dir, 'scaler.pkl'))
-
+    saved_model_path = os.path.join(model_dir, 'tf_model')
+    model.save(saved_model_path)
+    scaler_path = os.path.join(saved_model_path, 'scaler.pkl')
+    pd.to_pickle(scaler, scaler_path)
+    
     # 15) Plot
     plt.figure()
     plt.plot(history.history['loss'], label='train_loss')
