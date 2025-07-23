@@ -157,7 +157,7 @@ def train_and_evaluate(df: pd.DataFrame, model_dir: str, bucket: str=None,
     model.save(saved_model_path)
     scaler_path = os.path.join(saved_model_path, 'scaler.pkl')
     pd.to_pickle(scaler, scaler_path)
-    
+
     # 15) Plot
     plt.figure()
     plt.plot(history.history['loss'], label='train_loss')
@@ -169,7 +169,6 @@ def train_and_evaluate(df: pd.DataFrame, model_dir: str, bucket: str=None,
     # 16) Upload if bucket provided
     if bucket:
         upload_to_gcs(os.path.join(model_dir, 'tf_model'), bucket, 'model/tf_model', recursive=True)
-        upload_to_gcs(os.path.join(model_dir, 'scaler.pkl'), bucket, 'model/scaler.pkl')
         upload_to_gcs(os.path.join(model_dir, 'loss_curve.png'), bucket, 'model/loss_curve.png')
 
 
