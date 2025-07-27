@@ -36,14 +36,14 @@ steps:
           JOB_NAME="regression-train-${COMMIT_SHA}"
           JOB_ID=$(gcloud ai custom-jobs create \
             --region=us-central1 \
-            --display-name=\$\$JOB_NAME \
+            --display-name=$$JOB_NAME \
             --worker-pool-spec=machine-type=n1-standard-4,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/regression-model:${COMMIT_SHA} \
             --args="--bucket=${_GCS_BUCKET_NAME},--prefix=${_PREFIX},--epochs=25,--batch-size=32" \
             --project=${_PROJECT_ID} \
             --format="value(name)")
-          gcloud ai custom-jobs stream-logs \$\$JOB_ID --region=us-central1 &
+          gcloud ai custom-jobs stream-logs $$JOB_ID --region=us-central1 &
           while true; do
-            STATE=$(gcloud ai custom-jobs describe \$\$JOB_ID --region=us-central1 --format="value(state)")
+            STATE=$(gcloud ai custom-jobs describe $$JOB_ID --region=us-central1 --format="value(state)")
             [[ "$STATE" == *"SUCCEEDED"* ]] && break
             [[ "$STATE" == *"FAILED"* || "$STATE" == *"CANCELLED"* ]] && exit 1
             sleep 60
