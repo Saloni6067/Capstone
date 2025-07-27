@@ -97,11 +97,11 @@ steps:
       - -c
       - |
           ENDPOINT_ID=$(gcloud ai endpoints list --region=us-central1 --filter="displayName=regression-prediction-endpoint" --format="value(name)" --limit=1)
-          if [ -z "$ENDPOINT_ID" ]; then
+          if [ -z "$$ENDPOINT_ID" ]; then
             ENDPOINT_ID=$(gcloud ai endpoints create --region=us-central1 --display-name=regression-prediction-endpoint --format="value(name)")
           fi
           MODEL_ID=$(gcloud ai models list --region=us-central1 --filter="displayName=regression-model" --format="value(name)" --limit=1)
-          gcloud ai endpoints deploy-model $ENDPOINT_ID \
+          gcloud ai endpoints deploy-model $$ENDPOINT_ID \
             --region=us-central1 \
             --model=$$MODEL_ID \
             --display-name="deployed-regression-model-${COMMIT_SHA}" \
