@@ -1,0 +1,16 @@
+FROM python:3.9-slim
+WORKDIR /app
+
+# 1) Install the deps you actually need
+RUN apt-get update && apt-get install -y <your-libs> && rm -rf /var/lib/apt/lists/*
+
+# 2) Copy & install Python deps
+COPY requirements.txt .
+RUN python -m pip install --upgrade pip \
+  && pip install --no-cache-dir -r requirements.txt
+
+# 3) Copy your entire src-reg folder
+COPY src-reg/ ./src-reg
+
+# 4) Entrypoint to the correct script
+ENTRYPOINT ["python", "src-reg/train_reg.py"]

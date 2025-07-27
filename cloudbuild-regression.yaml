@@ -1,0 +1,114 @@
+# cloudbuild-regression.yaml
+substitutions:
+  _PROJECT_ID: "capstoneproject-462618"
+  _GCS_BUCKET_NAME: "capstone-nasa-wildfire-sal"
+  _PREFIX: "RegModel"
+
+timeout: 21600s
+options:
+  logging: CLOUD_LOGGING_ONLY
+  default_logs_bucket_behavior: REGIONAL_USER_OWNED_BUCKET
+
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    id: Build_Train_Image
+    args:
+      - build
+      - -f
+      - Dockerfile.train_reg
+      - -t
+      - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/regression-model:${COMMIT_SHA}
+      - .
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: Push_Train_Image
+    args:
+      - push
+      - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/regression-model:${COMMIT_SHA}
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: Vertex_AI_Training
+    entrypoint: bash
+    args:
+      - -c
+      - |
+          set -e
+          JOB_NAME="regression-train-${COMMIT_SHA}"
+          JOB_ID=$(gcloud ai custom-jobs create \
+            --region=us-central1 \
+            --display-name=$JOB_NAME \
+            --worker-pool-spec=machine-type=n1-standard-4,replica-count=1,container-image-uri=us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/regression-model:${COMMIT_SHA} \
+            --args="--bucket=${_GCS_BUCKET_NAME},--prefix=${_PREFIX},--epochs=25,--batch-size=32" \
+            --project=${_PROJECT_ID} \
+            --format="value(name)")
+          gcloud ai custom-jobs stream-logs $JOB_ID --region=us-central1 &
+          while true; do
+            STATE=$(gcloud ai custom-jobs describe $JOB_ID --region=us-central1 --format="value(state)")
+            [[ "$STATE" == *"SUCCEEDED"* ]] && break
+            [[ "$STATE" == *"FAILED"* || "$STATE" == *"CANCELLED"* ]] && exit 1
+            sleep 60
+          done
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: Verify_Artifacts
+    entrypoint: bash
+    args:
+      - -c
+      - |
+          gsutil ls gs://${_GCS_BUCKET_NAME}/${_PREFIX}/tf_model/saved_model.pb || exit 1
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: Build_Serve_Image
+    args:
+      - build
+      - -f
+      - Dockerfile.serve_reg
+      - -t
+      - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/regression-model-inference:${COMMIT_SHA}
+      - .
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: Push_Serve_Image
+    args:
+      - push
+      - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/regression-model-inference:${COMMIT_SHA}
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: Register_Model
+    entrypoint: bash
+    args:
+      - -c
+      - |
+          MODEL_URI="gs://${_GCS_BUCKET_NAME}/${_PREFIX}/tf_model"
+          gcloud ai models upload \
+            --region=us-central1 \
+            --display-name="regression-model" \
+            --artifact-uri="$MODEL_URI" \
+            --container-image-uri="us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/regression-model-inference:${COMMIT_SHA}" \
+            --container-predict-route="/predict" \
+            --container-health-route="/health" \
+            --container-ports=8080 \
+            --project=${_PROJECT_ID}
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: Deploy_Model
+    entrypoint: bash
+    args:
+      - -c
+      - |
+          ENDPOINT_ID=$(gcloud ai endpoints list --region=us-central1 --filter="displayName=regression-prediction-endpoint" --format="value(name)" --limit=1)
+          if [ -z "$ENDPOINT_ID" ]; then
+            ENDPOINT_ID=$(gcloud ai endpoints create --region=us-central1 --display-name=regression-prediction-endpoint --format="value(name)")
+          fi
+          MODEL_ID=$(gcloud ai models list --region=us-central1 --filter="displayName=regression-model" --format="value(name)" --limit=1)
+          gcloud ai endpoints deploy-model $ENDPOINT_ID \
+            --region=us-central1 \
+            --model=$MODEL_ID \
+            --display-name="deployed-regression-model-${COMMIT_SHA}" \
+            --machine-type=n1-standard-2 \
+            --traffic-split=0=100 \
+            --project=${_PROJECT_ID}
+
+images:
+  - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/regression-model:${COMMIT_SHA}
+  - us-central1-docker.pkg.dev/${_PROJECT_ID}/capstone/regression-model-inference:${COMMIT_SHA}
