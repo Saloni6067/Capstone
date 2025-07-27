@@ -1,4 +1,3 @@
-# train_reg.py
 #!/usr/bin/env python
 import argparse
 import os
@@ -51,18 +50,22 @@ def build_model(input_shape):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--bucket', default=None)
-    parser.add_argument('--prefix', default='RegModel')
-    parser.add_argument('--model-dir', default='/tmp/model')
+    parser.add_argument('--data-prefix', default='data', help='GCS prefix for NASA.csv')
+    parser.add_argument('--prefix', default='RegModel', help='GCS prefix for model artifacts')
+    parser.add_argument('--model-dir', default='/tmp/model', help='Local directory to save model')
     parser.add_argument('--epochs', type=int, default=25)
     parser.add_argument('--batch-size', type=int, default=32)
     args = parser.parse_args()
 
-    df = load_data(args.bucket, args.prefix, 'NASA.csv')
+    # 1) Load data
+    df = load_data(args.bucket, args.data_prefix, 'NASA.csv')
     X = df.drop(columns=['frp'])
     y = df['frp']
 
+    # 2) Split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
+    # 3) Preprocessing pipelines
     numeric_features = ['latitude', 'longitude', 'brightness', 'scan', 'track', 'bright_t31']
     categorical_features = ['satellite', 'instrument', 'daynight', 'type']
 
@@ -83,9 +86,10 @@ def main():
     X_train_proc = preprocessor.fit_transform(X_train)
     X_test_proc = preprocessor.transform(X_test)
 
+    # 4) Build & train model
     model = build_model(X_train_proc.shape[1])
     early_stop = keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True)
-    model.fit(
+    history = model.fit(
         X_train_proc, y_train,
         validation_split=0.2,
         epochs=args.epochs,
@@ -93,6 +97,7 @@ def main():
         callbacks=[early_stop], verbose=1
     )
 
+    # 5) Evaluate
     y_pred = model.predict(X_test_proc).flatten()
     mse = mean_squared_error(y_test, y_pred)
     rmse = np.sqrt(mse)
@@ -100,19 +105,24 @@ def main():
     print(f"Test RMSE: {rmse:.4f}")
     print(f"Test R2: {r2:.4f}")
 
+    # 6) Save artifacts
     os.makedirs(args.model_dir, exist_ok=True)
     saved_path = os.path.join(args.model_dir, 'tf_model')
     model.save(saved_path)
     with open(os.path.join(saved_path, 'preprocessor.pkl'), 'wb') as f:
         pickle.dump(preprocessor, f)
 
+    # 7) Upload to GCS if bucket provided
     if args.bucket:
         client = storage.Client()
         bucket = client.bucket(args.bucket)
-        for fname in os.listdir(saved_path):
-            local_path = os.path.join(saved_path, fname)
-            blob = bucket.blob(f"{args.prefix}/tf_model/{fname}")
-            blob.upload_from_filename(local_path)
+        # upload saved_model files
+        for root, _, files in os.walk(saved_path):
+            for fname in files:
+                local_path = os.path.join(root, fname)
+                rel_path = os.path.relpath(local_path, args.model_dir)
+                blob = bucket.blob(f"{args.prefix}/{rel_path}")
+                blob.upload_from_filename(local_path)
 
 if __name__ == '__main__':
     main()
