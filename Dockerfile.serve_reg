@@ -1,14 +1,27 @@
+# Dockerfile.serve_reg
 FROM python:3.9-slim
+
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y libgomp1 libatlas3-base libopenblas-dev \
-  && rm -rf /var/lib/apt/lists/*
+# Install TensorFlow native dependencies
+RUN apt-get update && apt-get install -y \
+      libgomp1 \
+      libatlas3-base \
+      libopenblas-dev \
+    && rm -rf /var/lib/apt/lists/*
 
+# Copy & install Python deps
 COPY requirements.txt .
 RUN python -m pip install --upgrade pip \
-  && pip install --no-cache-dir -r requirements.txt
+ && pip install --no-cache-dir -r requirements.txt
 
+# Copy inference code
 COPY src-reg/ ./src-reg
+
+# Configure GCS access for runtime model fetch
+ENV GCS_BUCKET=capstone-nasa-wildfire-sal
+ENV GCS_PREFIX=RegModel
 
 EXPOSE 8080
 ENTRYPOINT ["python", "src-reg/serve_reg.py"]
+
