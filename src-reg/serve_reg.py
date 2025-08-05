@@ -9,34 +9,28 @@ from google.cloud import storage
 
 app = Flask(__name__)
 
-# Where to download / serve the model inside the container
-MODEL_PATH = "/model/tf_model"
+# Environment-configured bucket & prefix
+GCS_BUCKET = os.environ['GCS_BUCKET']
+GCS_PREFIX = os.environ.get('GCS_PREFIX', 'RegModel')
+MODEL_PATH = '/model/tf_model'
 
-# Environment variables set in your Dockerfile
-GCS_BUCKET = os.environ.get("GCS_BUCKET", "")
-GCS_PREFIX = os.environ.get("GCS_PREFIX", "RegModel")
+# 1) Download every blob under {GCS_PREFIX}/tf_model/, recreating folders:
+client = storage.Client()
+bucket = client.bucket(GCS_BUCKET)
+prefix_path = f"{GCS_PREFIX}/tf_model/"
+for blob in bucket.list_blobs(prefix=prefix_path):
+    if blob.name.endswith('/'):
+        continue
+    rel_path = blob.name[len(prefix_path):]                # e.g. "variables/variables.index"
+    local_file = os.path.join(MODEL_PATH, rel_path)
+    os.makedirs(os.path.dirname(local_file), exist_ok=True)
+    blob.download_to_filename(local_file)
 
-def fetch_from_gcs(bucket_name: str, prefix: str, dest_dir: str):
-    client = storage.Client()
-    bucket = client.bucket(bucket_name)
-    # List all blobs under the tf_model/ folder
-    for blob in bucket.list_blobs(prefix=f"{prefix}/tf_model/"):
-        if blob.name.endswith("/"):
-            continue
-        filename = os.path.basename(blob.name)
-        local_path = os.path.join(dest_dir, filename)
-        os.makedirs(dest_dir, exist_ok=True)
-        blob.download_to_filename(local_path)
-
-# On startup, download the SavedModel folder if not already present
-if GCS_BUCKET:
-    if not os.path.exists(os.path.join(MODEL_PATH, "saved_model.pb")):
-        fetch_from_gcs(GCS_BUCKET, GCS_PREFIX, MODEL_PATH)
-
-# Now load the model directory (not the .pb file directly)
+# 2) Load SavedModel directory
 model = keras.models.load_model(MODEL_PATH)
-# Load the scaler or preprocessor
-with open(os.path.join(MODEL_PATH, "scaler.pkl"), "rb") as f:
+
+# 3) Load scaler/preprocessor
+with open(os.path.join(MODEL_PATH, 'scaler.pkl'), 'rb') as f:
     preprocessor = pickle.load(f)
 
 @app.route('/health', methods=['GET'])
@@ -52,6 +46,4 @@ def predict():
     return jsonify({'predictions': preds})
 
 if __name__ == '__main__':
-    # Use default port or override with PORT env var
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
