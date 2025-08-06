@@ -1,5 +1,4 @@
 # cloudbuild.yaml
-22
 substitutions:
   _PROJECT_ID: "capstoneproject-462618"
   _GCS_BUCKET_NAME: "capstone-nasa-wildfire-sal"
