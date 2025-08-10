@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wildfire Detection System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #0d1b2a, #1b263b, #0d1b2a);
+            color: #e0e1dd;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            margin-bottom: 30px;
+            width: 100%;
+        }
+        
+        header h1 {
+            font-size: 3.5rem;
+            margin-bottom: 15px;
+            color: #fff;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        header h1 i {
+            color: #ff6b00;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        header p {
+            font-size: 1.4rem;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #a3b1c6;
+            line-height: 1.8;
+        }
+        
+        .model-selection {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 40px;
+            width: 100%;
+            max-width: 1000px;
+            margin: 30px 0;
+        }
+        
+        .model-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 450px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .model-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, #ff6b00, #ff9e00);
+        }
+        
+        .model-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            background: rgba(255, 255, 255, 0.08);
+        }
+        
+        .model-icon {
+            font-size: 4.5rem;
+            margin-bottom: 25px;
+            color: #ff9e00;
+        }
+        
+        .model-title {
+            font-size: 2.2rem;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+        
+        .model-description {
+            font-size: 1.1rem;
+            color: #a3b1c6;
+            margin-bottom: 30px;
+            line-height: 1.7;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #ff6b00, #ff9e00);
+            color: white;
+            border: none;
+            padding: 16px 30px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            width: 100%;
+            max-width: 250px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            text-decoration: none;
+            box-shadow: 0 5px 15px rgba(255, 107, 0, 0.3);
+        }
+        
+        .btn:hover {
+            background: linear-gradient(135deg, #e65a00, #ff8c00);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(230, 90, 0, 0.5);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .features {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin: 50px 0;
+            width: 100%;
+        }
+        
+        .feature {
+            background: rgba(26, 65, 119, 0.3);
+            border-radius: 12px;
+            padding: 25px;
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .feature:hover {
+            transform: translateY(-5px);
+            background: rgba(26, 65, 119, 0.4);
+        }
+        
+        .feature i {
+            font-size: 2.5rem;
+            color: #ff9e00;
+            margin-bottom: 20px;
+        }
+        
+        .feature h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+        
+        .feature p {
+            font-size: 1rem;
+            color: #a3b1c6;
+            line-height: 1.7;
+        }
+        
+        footer {
+            text-align: center;
+            color: #778da9;
+            padding: 30px;
+            font-size: 1rem;
+            margin-top: 40px;
+            width: 100%;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .system-overview {
+            background: rgba(26, 65, 119, 0.2);
+            border-radius: 15px;
+            padding: 40px;
+            margin: 50px 0;
+            width: 100%;
+            max-width: 900px;
+            text-align: center;
+        }
+        
+        .system-overview h2 {
+            font-size: 2.2rem;
+            margin-bottom: 30px;
+            color: #fff;
+        }
+        
+        .system-overview p {
+            font-size: 1.1rem;
+            color: #a3b1c6;
+            line-height: 1.8;
+            margin-bottom: 25px;
+        }
+        
+        .diagram {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 40px 0;
+            gap: 20px;
+        }
+        
+        .diagram-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 120px;
+        }
+        
+        .diagram-step i {
+            font-size: 2rem;
+            background: #1b3a4b;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            color: #ff9e00;
+        }
+        
+        .diagram-step span {
+            background: #ff6b00;
+            height: 4px;
+            width: 40px;
+            margin-top: 33px;
+        }
+        
+        .diagram-step p {
+            font-size: 0.9rem;
+            margin-top: 10px;
+            font-weight: 500;
+            color: #fff;
+        }
+        
+        @media (max-width: 900px) {
+            .model-selection {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .model-card {
+                max-width: 90%;
+            }
+            
+            header h1 {
+                font-size: 2.5rem;
+            }
+            
+            header p {
+                font-size: 1.2rem;
+            }
+            
+            .diagram {
+                flex-wrap: wrap;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            header h1 {
+                font-size: 2rem;
+            }
+            
+            header p {
+                font-size: 1.1rem;
+            }
+            
+            .model-title {
+                font-size: 1.8rem;
+            }
+            
+            .model-description {
+                font-size: 1rem;
+            }
+            
+            .system-overview {
+                padding: 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-fire"></i> Wildfire Detection System</h1>
+            <p>Advanced AI-powered solutions for early wildfire detection and intensity prediction</p>
+        </header>
+        
+        
+        <div class="model-selection">
+            <div class="model-card">
+                <div class="model-icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <h2 class="model-title">Classification Model</h2>
+                <p class="model-description">
+                    This model classifies fires into categories (Low, Medium, High) based on probability. 
+                    It provides actionable insights and response protocols for each category.
+                </p>
+                <a href="classification.html" class="btn">
+                    <i class="fas fa-arrow-right"></i> Use Classification
+                </a>
+            </div>
+            
+            <div class="model-card">
+                <div class="model-icon">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <h2 class="model-title">Regression Model</h2>
+                <p class="model-description">
+                    This model predicts the Fire Radiative Power (FRP) in Megawatts. 
+                    It provides precise intensity measurements and detailed response strategies.
+                </p>
+                <a href="regression.html" class="btn">
+                    <i class="fas fa-arrow-right"></i> Use Regression
+                </a>
+            </div>
+        </div>
+        
+        <div class="features">
+            <div class="feature">
+                <i class="fas fa-bolt"></i>
+                <h3>Real-time Analysis</h3>
+                <p>Process satellite data in real-time to provide immediate wildfire detection and predictions.</p>
+            </div>
+            
+            <div class="feature">
+                <i class="fas fa-robot"></i>
+                <h3>AI-Powered</h3>
+                <p>Utilizes advanced machine learning models trained on thousands of wildfire incidents.</p>
+            </div>
+            
+            <div class="feature">
+                <i class="fas fa-map-marked-alt"></i>
+                <h3>Geospatial Accuracy</h3>
+                <p>Pinpoints fire locations with high precision using latitude and longitude coordinates.</p>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Wildfire Detection System &copy; 2025 | Powered by Google Cloud AI Platform</p>
+            <p>Protecting forests and communities through advanced technology</p>
+        </footer>
+    </div>
+</body>
+</html>

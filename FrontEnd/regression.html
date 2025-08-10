@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wildfire Detection System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            color: #e0e1dd;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        
+        .home-btn {
+            position: absolute;
+            left: 0;
+            top: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s;
+        }
+        
+        .home-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        header p {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            opacity: 0.9;
+            color: #e0e1dd;
+        }
+        
+        .content-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .form-container {
+            flex: 2;
+            min-width: 300px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .result-container {
+            flex: 2;
+            min-width: 300px;
+            background: rgb(255, 255, 255);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(224, 225, 221, 0.2);
+            color: #000000;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #000000;
+        }
+        
+        .input-hint {
+            display: block;
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 4px;
+            font-style: italic;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+            color: #000000;
+        }
+        
+        input:focus, select:focus {
+            border-color: #ff9e00;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 158, 0, 0.2);
+            background: #fff;
+        }
+        
+        input::placeholder {
+            color: rgba(0, 0, 0, 0.6);
+        }
+        
+        .input-row {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .input-row .form-group {
+            flex: 1;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #ff6b00, #ff9e00);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            background: linear-gradient(135deg, #e65a00, #ff8c00);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(230, 90, 0, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .result-content {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .frp-value {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin: 10px 0;
+            line-height: 1.2;
+            color: #ff5722;
+        }
+        
+        .confidence-display {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 10px 0;
+            line-height: 1.2;
+            text-transform: uppercase;
+        }
+        
+        .confidence-low {
+            color: #4CAF50;
+        }
+        
+        .confidence-medium {
+            color: #FFC107;
+        }
+        
+        .confidence-high {
+            color: #FF9800;
+        }
+        
+        .confidence-very-high {
+            color: #F44336;
+        }
+        
+        .confidence-label {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #000000;
+        }
+        
+        .confidence-description {
+            font-size: 1.1rem;
+            max-width: 100%;
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            color: #000000;
+            text-align: left;
+        }
+        
+        .alert-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .protocol-box {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: left;
+        }
+        
+        .protocol-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .protocol-list {
+            padding-left: 25px;
+        }
+        
+        .protocol-list li {
+            margin-bottom: 8px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #ff9e00;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .frp-label {
+            font-size: 1.1rem;
+            margin-top: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .results-row {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .results-header {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #000;
+        }
+        
+        .category-indicator {
+            width: 100%;
+            height: 8px;
+            background: linear-gradient(90deg, #4CAF50, #FFC107, #FF9800, #F44336);
+            border-radius: 4px;
+            margin-top: 10px;
+            position: relative;
+        }
+        
+        .category-marker {
+            position: absolute;
+            top: -5px;
+            width: 18px;
+            height: 18px;
+            background: #333;
+            border-radius: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .category-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 5px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .welcome-panel {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+            text-align: center;
+            color: #333;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        
+        .welcome-panel h3 {
+            margin-bottom: 10px;
+            color: #b21f1f;
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            color: #333;
+        }
+        
+        .instructions h4 {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .instructions ol {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        footer {
+            text-align: center;
+            color: #a3b1c6;
+            padding: 20px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        @media (max-width: 768px) {
+            .content-wrapper {
+                flex-direction: column;
+            }
+            
+            header h1 {
+                font-size: 2rem;
+            }
+            
+            .confidence-display {
+                font-size: 2rem;
+            }
+            
+            .frp-value {
+                font-size: 2.5rem;
+            }
+            
+            .input-row {
+                flex-direction: column;
+                gap: 0;
+            }
+            
+            .alert-header {
+                font-size: 1.2rem;
+            }
+            
+            .home-btn {
+                position: relative;
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <button class="home-btn" onclick="location.href='index.html'">
+                <i class="fas fa-home"></i> Home
+            </button>
+            <h1><i class="fas fa-fire"></i> Wildfire Detection System</h1>
+            <p>Enter satellite data parameters to predict Fire Radiative Power (FRP) using our advanced machine learning model</p>
+        </header>
+        
+        <div class="content-wrapper">
+            <div class="form-container">
+                <h2 class="section-title">Satellite Data Parameters</h2>
+                
+                <div class="welcome-panel">
+                    <h3><i class="fas fa-info-circle"></i> Ready to Predict Fire Intensity</h3>
+                    <p>Fill in the form with satellite data and click "Predict Fire Intensity"</p>
+                </div>
+                
+                <form id="predictionForm">
+                    <div class="input-row">
+                        <div class="form-group">
+                            <label for="latitude">Latitude</label>
+                            <span class="input-hint">Coordinate of the detected fire (in degrees)</span>
+                            <input type="number" step="any" id="latitude" placeholder="e.g. 37.7749" value="34.5" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="longitude">Longitude</label>
+                            <span class="input-hint">Coordinate of the detected fire (in degrees)</span>
+                            <input type="number" step="any" id="longitude" placeholder="e.g. -122.4194" value="-117.3" required>
+                        </div>
+                    </div>
+                    
+                    <div class="input-row">
+                        <div class="form-group">
+                            <label for="brightness">Brightness</label>
+                            <span class="input-hint">Temperature of fire pixel in Kelvin (Channel M13)</span>
+                            <input type="number" step="any" id="brightness" placeholder="e.g. 320.5" value="310.7" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="bright_t31">Fire Context Temperature</label>
+                            <span class="input-hint">Temperature from thermal band (Channel M15) in Kelvin</span>
+                            <input type="number" step="any" id="bright_t31" placeholder="e.g. 290.0" value="299.9" required>
+                        </div>
+                    </div>
+                    
+                    <div class="input-row">
+                        <div class="form-group">
+                            <label for="scan">Scan</label>
+                            <span class="input-hint">Width of the satellite pixel in kilometers</span>
+                            <input type="number" step="any" id="scan" placeholder="e.g. 1.5" value="1.2" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="track">Track</label>
+                            <span class="input-hint">Height/length of the satellite pixel in kilometers</span>
+                            <input type="number" step="any" id="track" placeholder="e.g. 1.0" value="0.8" required>
+                        </div>
+                    </div>
+                    
+                    <div class="input-row">
+                        <div class="form-group">
+                            <label for="daynight">Day/Night</label>
+                            <span class="input-hint">Detection occurred during day (D) or night (N)</span>
+                            <select id="daynight" required>
+                                <option value="1">Day (D)</option>
+                                <option value="0" selected>Night (N)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="type">Fire Type</label>
+                            <span class="input-hint">Type of fire detected</span>
+                            <select id="type" required>
+                                <option value="0">Vegetation Fire</option>
+                                <option value="1">Volcano</option>
+                                <option value="2" selected>Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn">
+                        <i class="fas fa-fire"></i> Predict Fire Intensity
+                    </button>
+                </form>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Analyzing satellite data with our AI model...</p>
+                </div>
+                
+                <div class="instructions">
+                    <h4><i class="fas fa-lightbulb"></i> Instructions:</h4>
+                    <ol>
+                        <li>Fill in all required fields with satellite data</li>
+                        <li>Click "Predict Fire Intensity" button</li>
+                        <li>View results in the Prediction Results panel</li>
+                        <li>Use the "Reset Form" button to start over</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <div class="result-container">
+                <h2 class="section-title">Prediction Results</h2>
+                
+                <div class="result-content">
+                    <div id="initialState">
+                        <i class="fas fa-satellite" style="font-size: 5rem; color: #ccc; margin-bottom: 20px;"></i>
+                        <h3>No Prediction Yet</h3>
+                        <p>Submit satellite data to get fire intensity prediction</p>
+                    </div>
+                    
+                    <div id="resultsDisplay" style="display: none; width: 100%;">
+                        <div class="results-header">Fire Radiative Power (FRP)</div>
+                        <div class="frp-value" id="frpDisplay">-</div>
+                        <div class="frp-label">Megawatts (MW)</div>
+                        
+                        <div class="results-header">Fire Intensity Category</div>
+                        <div class="confidence-display" id="confidenceDisplay">-</div>
+                        
+                        <div class="category-indicator">
+                            <div class="category-marker" id="categoryMarker" style="left: 0%"></div>
+                        </div>
+                        <div class="category-labels">
+                            <span>Low<br>(≤10 MW)</span>
+                            <span>Medium<br>(11-100 MW)</span>
+                            <span>High<br>(101-500 MW)</span>
+                            <span>Very High<br>(>500 MW)</span>
+                        </div>
+                        
+                        <div class="confidence-description" id="confidenceDescription">
+                            Submit satellite data to get fire intensity prediction
+                        </div>
+                        
+                        <button class="btn" id="resetBtn" style="margin-top: 20px; background: #555;">
+                            <i class="fas fa-redo"></i> Reset Form
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Wildfire Detection System &copy; 2025 | Powered by Google Cloud AI Platform</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Handle form submission
+        document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
+            
+            // Hide initial state and show results display
+            document.getElementById('initialState').style.display = 'none';
+            document.getElementById('resultsDisplay').style.display = 'block';
+            
+            // Show loading state in results
+            document.getElementById('frpDisplay').textContent = '...';
+            document.getElementById('confidenceDisplay').textContent = 'Calculating';
+            document.getElementById('confidenceDescription').textContent = 'Processing satellite data...';
+            
+            const inputs = {
+                latitude: parseFloat(document.getElementById('latitude').value),
+                longitude: parseFloat(document.getElementById('longitude').value),
+                brightness: parseFloat(document.getElementById('brightness').value),
+                bright_t31: parseFloat(document.getElementById('bright_t31').value),
+                scan: parseFloat(document.getElementById('scan').value),
+                track: parseFloat(document.getElementById('track').value),
+                daynight: parseInt(document.getElementById('daynight').value),
+                type: parseInt(document.getElementById('type').value)
+            };
+
+            // Prepare API request data
+            const requestData = {
+                instances: [
+                    [
+                        inputs.latitude,
+                        inputs.longitude,
+                        inputs.brightness,
+                        inputs.bright_t31,
+                        inputs.scan,
+                        inputs.track,
+                        inputs.daynight,
+                        inputs.type
+                    ]
+                ]
+            };
+ 
+            try {
+                const response = await fetch('https://us-central1-aiplatform.googleapis.com/v1/projects/capstoneproject-462618/locations/us-central1/endpoints/287811462221529088:predict', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ya29.a0AS3H6Nz6tkZlekAoHWwcU-VsG2204KgPx3H4CXOoJqo_9Q3_uY2kx-YboXMyDcFqDxriDz1sGNTn5H5Ug5m1tiaESzxv-flu4PObcqSnOM4EJ5y0pvhcteBU0JeMLhpBZjh1L6U1cPzB_x3iGystlayQRbz3qat2XbYTZUaP7Xx7NKidaCgYKAbASARYSFQHGX2MiL7oVWbt85fmh7ovSYSXw1g0183',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                // Display results with inputs
+                displayResults(result, inputs);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('frpDisplay').textContent = 'ERR';
+                document.getElementById('confidenceDisplay').textContent = 'Error';
+                document.getElementById('confidenceDisplay').className = 'confidence-display confidence-very-high';
+                document.getElementById('confidenceDescription').innerHTML = 
+                    `<div class="alert-header">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>SYSTEM ERROR</span>
+                    </div>
+                    <div>Error processing request: ${error.message}</div>
+                    <div>Please check your inputs and try again.</div>`;
+            } finally {
+                // Hide loading indicator
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+        
+        // Reset button functionality
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            document.getElementById('initialState').style.display = 'block';
+            document.getElementById('resultsDisplay').style.display = 'none';
+            document.getElementById('predictionForm').reset();
+        });
+        
+        function displayResults(apiResponse, inputs) {
+            // Extract the FRP value from the API response
+            let frpValue;
+            try {
+                frpValue = apiResponse.predictions[0];
+            } catch (e) {
+                throw new Error("Invalid API response format");
+            }
+            
+            // Format the FRP value to two decimal places
+            const formattedFRP = frpValue.toFixed(2);
+            
+            // Categorize the fire based on FRP value
+            let category, className, description, protocol;
+            let markerPosition = 0;
+            
+            if (frpValue <= 10) {
+                category = "Low";
+                className = "confidence-low";
+                markerPosition = (frpValue / 10) * 25; // Position in first 25% of scale
+                description = "Low Fire Radiative Power detected. This may be a small fire or false alarm.";
+                protocol = `
+                    <li>Verify via weather cams before next satellite scan (90 min)</li>
+                    <li>Cross-check with weather cams/industrial maps</li>
+                    <li>Log for next automated satellite pass (90 mins)</li>
+                    <li>NO RESOURCE DEPLOYMENT until verified</li>`;
+            } else if (frpValue <= 100) {
+                category = "Medium";
+                className = "confidence-medium";
+                markerPosition = 25 + ((frpValue - 10) / 90) * 25; // Position between 25-50%
+                description = "Moderate Fire Radiative Power detected. This indicates a developing fire.";
+                protocol = `
+                    <li>Deploy drone for visual confirmation</li>
+                    <li>Alert local rangers for ground assessment</li>
+                    <li>Prepare initial response teams</li>
+                    <li>Monitor satellite for next 2 hours</li>`;
+            } else if (frpValue <= 500) {
+                category = "High";
+                className = "confidence-high";
+                markerPosition = 50 + ((frpValue - 100) / 400) * 25; // Position between 50-75%
+                description = "High Fire Radiative Power detected. This indicates a significant wildfire.";
+                protocol = `
+                    <li>Dispatch initial firefighting teams and equipment</li>
+                    <li>Alert communities within 3km radius</li>
+                    <li>Activate aerial surveillance</li>
+                    <li>Prepare evacuation plans</li>`;
+            } else {
+                category = "Very High";
+                className = "confidence-very-high";
+                markerPosition = 75 + (Math.min(frpValue, 1000) - 500) / 500 * 25; // Position between 75-100%
+                description = "Extreme Fire Radiative Power detected. This indicates a massive and dangerous wildfire.";
+                protocol = `
+                    <li>Dispatch all available firefighting resources immediately</li>
+                    <li>Evacuate communities within 5km radius</li>
+                    <li>Activate emergency satellite re-scan in 30 mins</li>
+                    <li>Alert all regional emergency services</li>
+                    <li>Request national/international assistance</li>`;
+            }
+            
+            // Format coordinates for display
+            const lat = inputs.latitude.toFixed(4);
+            const lon = inputs.longitude.toFixed(4);
+            
+            // Update UI with results
+            document.getElementById('frpDisplay').textContent = formattedFRP;
+            document.getElementById('confidenceDisplay').textContent = category;
+            document.getElementById('confidenceDisplay').className = `confidence-display ${className}`;
+            document.getElementById('categoryMarker').style.left = `${markerPosition}%`;
+            
+            document.getElementById('confidenceDescription').innerHTML = 
+                `<div class="alert-header">
+                    <i class="fas fa-${frpValue > 100 ? 'fire' : (frpValue > 10 ? 'exclamation-triangle' : 'info-circle')}"></i>
+                    <span>${category.toUpperCase()} INTENSITY FIRE</span>
+                </div>
+                <div>${description}</div>
+                <div>Detected at coordinates: ${lat}, ${lon}</div>
+                
+                <div class="protocol-box">
+                    <div class="protocol-title">
+                        <i class="fas fa-clipboard-list"></i>
+                        <span>Action Protocol:</span>
+                    </div>
+                    <ul class="protocol-list">
+                        ${protocol}
+                    </ul>
+                </div>`;
+        }
+    </script>
+</body>
+</html>
