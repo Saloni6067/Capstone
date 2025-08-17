@@ -31,7 +31,6 @@ Both models are built using **TensorFlow/Keras** and deployed on **Google Cloud 
 Capstone/
 
 ├─ data/                     # Input datasets (e.g., NASA.csv)
-
 ├─ src-class/                # Classification model source code
 
 │   ├─ train_class.py
@@ -62,5 +61,6 @@ pip install -r requirements.txt
 gcloud auth login
 gcloud config set project capstoneproject-462618
 ```
+
 
 
