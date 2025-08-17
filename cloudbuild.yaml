@@ -1,7 +1,7 @@
 # cloudbuild.yaml 
 substitutions:
-  _PROJECT_ID: "capstoneproject-462618"
-  _GCS_BUCKET_NAME: "capstone-nasa-wildfire-sal"
+  _PROJECT_ID: "ADD_YOUR_PROJECT_ID"
+  _GCS_BUCKET_NAME: "ADD_YOUR_BUCKET_NAME"
 
 # Allow up to 6 hours for long training runs
 timeout: 21600s
