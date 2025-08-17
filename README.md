@@ -29,8 +29,11 @@ Both models are built using **TensorFlow/Keras** and deployed on **Google Cloud 
 ## Project Structure
 
 Capstone/
+
 ├─ data/                     # Input datasets (e.g., NASA.csv)
+
 ├─ src-class/                # Classification model source code
+
 │   ├─ train_class.py
 │   └─ serve_class.py
 ├─ src-reg/                  # Regression model source code
@@ -59,4 +62,5 @@ pip install -r requirements.txt
 gcloud auth login
 gcloud config set project capstoneproject-462618
 ```
+
 
