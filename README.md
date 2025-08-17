@@ -29,23 +29,22 @@ Both models are built using **TensorFlow/Keras** and deployed on **Google Cloud 
 ## Project Structure
 
 Capstone/
+    data/                     # Input datasets (e.g., NASA.csv)
+    src-class/                # Classification model source code
+        train_class.py
+        serve_class.py
+    src-reg/                  # Regression model source code
+        train_reg.py
+        serve_reg.py
+    Dockerfile.train_class
+    Dockerfile.serve_class
+    Dockerfile.train_reg
+    Dockerfile.serve_reg
+    cloudbuild-classification.yaml
+    cloudbuild-regression.yaml
+    requirements.txt
+    README.md
 
-├─ data/                     # Input datasets (e.g., NASA.csv)
-├─ src-class/                # Classification model source code
-
-│   ├─ train_class.py
-│   └─ serve_class.py
-├─ src-reg/                  # Regression model source code
-│   ├─ train_reg.py
-│   └─ serve_reg.py
-├─ Dockerfile.train_class
-├─ Dockerfile.serve_class
-├─ Dockerfile.train_reg
-├─ Dockerfile.serve_reg
-├─ cloudbuild-classification.yaml
-├─ cloudbuild-regression.yaml
-├─ requirements.txt
-└─ README.md
 
 
 ## Environment Setup
@@ -61,6 +60,7 @@ pip install -r requirements.txt
 gcloud auth login
 gcloud config set project capstoneproject-462618
 ```
+
 
 
 
