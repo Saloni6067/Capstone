@@ -1,7 +1,7 @@
 # cloudbuild-regression.yaml
 substitutions:
-  _PROJECT_ID: "capstoneproject-462618"
-  _GCS_BUCKET_NAME: "capstone-nasa-wildfire-sal"
+  _PROJECT_ID: "ADD_YOUR_PROJECT_ID"
+  _GCS_BUCKET_NAME: "ADD_YOUR_PROJECT_NAME"
   _PREFIX: "RegModel"
 
 timeout: 21600s
