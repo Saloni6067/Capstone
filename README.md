@@ -87,7 +87,7 @@ Send a POST request with JSON payload:
 ```json
 {
   "instances": [
-    [34.5, -117.3, 310.7, 299.9, 1.2, 0.8, 0, 2]
+    [68.41, 83.61, 329.46, 247.02, 3.61 ,0.58, 0.7, 1, 2]     
   ]
 }
 ```
@@ -102,6 +102,14 @@ Send a POST request with JSON payload:
 ```
 
 **Note:** Use the appropriate endpoint for each model.
+
+**OR**
+## Use the UI
+Classification Prediction Form
+<img width="848" height="401" alt="image" src="https://github.com/user-attachments/assets/39099a07-aa8e-418e-ab0b-77e6cbf620ff" />
+
+Regression Predection Form
+<img width="975" height="461" alt="image" src="https://github.com/user-attachments/assets/e634deab-34dd-43f3-88fc-a6bdd5081f25" />
 
 ---
 
@@ -128,4 +136,5 @@ PORT=8080
 - Any push to GitHub triggers the CI/CD pipeline automatically.
 - Regression and classification models are deployed to **separate endpoints** to avoid overwriting artifacts.
 - Ensure proper environment variables are set in serving containers to load models correctly.
+
 
